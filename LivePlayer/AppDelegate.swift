@@ -12,10 +12,20 @@ import UIKit
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
-
+    var server: HttpServer?
 
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
         // Override point for customization after application launch.
+        let documentsPath  = NSSearchPathForDirectoriesInDomains(.DocumentDirectory, .UserDomainMask, true)[0] as String
+        let server = HttpServer()
+        print(documentsPath)
+        server["/files(.+)"] = HttpHandlers.directoryBrowser(documentsPath)
+//        server["/video"] = { .OK(.STRING("<!DOCTYPE html><html><body><video width=\"320\" height=\"240\" src=\"http://www.w3schools.com/tags/movie.mp4\" controls autoplay></video>" + $0.url + "</body></html>")) }
+        self.server = server
+        var error: NSError?
+        if !server.start(error: &error) {
+            print("Server start error: \(error)")
+        }
         return true
     }
 

@@ -1,0 +1,68 @@
+//
+//  Handlers.swift
+//  Swifter
+//  Copyright (c) 2014 Damian Kołakowski. All rights reserved.
+//
+
+import Foundation
+
+public class HttpHandlers {
+
+    public class func directory(dir: String) -> ( HttpRequest -> HttpResponse ) {
+        return { request in
+            if let localPath = request.capturedUrlGroups.first {
+                let filesPath = dir.stringByExpandingTildeInPath.stringByAppendingPathComponent(localPath)
+                if let fileBody = NSData(contentsOfFile: filesPath) {
+                    return HttpResponse.RAW(200, "OK", nil, fileBody)
+                }
+            }
+            return HttpResponse.NotFound
+        }
+    }
+
+    public class func directoryBrowser(dir: String) -> ( HttpRequest -> HttpResponse ) {
+        return { request in
+            print("in directoryBrowser")
+            print(request.capturedUrlGroups.first)
+            if let pathFromUrl = request.capturedUrlGroups.first {
+                let filePath = dir.stringByExpandingTildeInPath.stringByAppendingPathComponent(pathFromUrl)
+                print(filePath)
+                let fileManager = NSFileManager.defaultManager()
+                var isDir: ObjCBool = false;
+                if ( fileManager.fileExistsAtPath(filePath, isDirectory: &isDir) ) {
+                    if ( isDir ) {
+                        do {
+                            let files = try fileManager.contentsOfDirectoryAtPath(filePath)
+                            print(files)
+                            var response = "<h3>\(filePath)</h3></br><table>"
+                            response += files.map({ "<tr><td><a href=\"\(request.url)/\($0)\">\($0)</a></td></tr>"}).joinWithSeparator("")
+                            response += "</table>"
+                            return HttpResponse.OK(.HTML(response))
+                        } catch  {
+                            return HttpResponse.NotFound
+                        }
+                    } else {
+                        if let fileBody = NSData(contentsOfFile: filePath) {
+                            return HttpResponse.RAW(200, "OK", [
+                                "Content-Type": "video/mp4",
+                                "Accept-Ranges": "bytes",
+                                "Content-Range": "bytes 0-" + String(fileBody.length - 1) + "/" + String(fileBody.length)
+                            ], fileBody)
+                        }
+                    }
+                }
+            }
+            return HttpResponse.NotFound
+        }
+    }
+}
+
+private extension String {
+    var stringByExpandingTildeInPath: String {
+        return (self as NSString).stringByExpandingTildeInPath
+    }
+
+    func stringByAppendingPathComponent(str: String) -> String {
+        return (self as NSString).stringByAppendingPathComponent(str)
+    }
+}
